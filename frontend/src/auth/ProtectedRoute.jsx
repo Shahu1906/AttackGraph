@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
+/** Redirect unauthenticated users and optionally block non-admin content. */
 export default function ProtectedRoute({ children, adminOnly = false }) {
   const { isAuthenticated, isAdmin } = useAuth();
   const location = useLocation();

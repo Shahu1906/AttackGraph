@@ -30,6 +30,7 @@ async def simulate_fix(
     body: SimulateRequest,
     admin: Annotated[dict, Depends(require_admin)] = None,
 ):
+    """Simulate an admin-selected fix, caching live results and reusing cached results on failure."""
     log.info("Simulate fix requested", user=admin.get("sub"), vulnerability=body.vulnerability_id)
     try:
         result = await analysis_client.simulate_fix(body.vulnerability_id)
@@ -67,6 +68,7 @@ async def simulate_fix(
 async def reset_simulation(
     admin: Annotated[dict, Depends(require_admin)] = None,
 ):
+    """Reset upstream simulations for an administrator or raise HTTP 503 if unavailable."""
     log.info("Simulation reset requested", user=admin.get("sub"))
     try:
         result = await analysis_client.reset_simulation()
@@ -93,6 +95,7 @@ async def reset_simulation(
 async def trigger_scan(
     admin: Annotated[dict, Depends(require_admin)] = None,
 ):
+    """Trigger an administrator's upstream scan or raise HTTP 503 if unavailable."""
     log.info("Scan trigger requested", user=admin.get("sub"))
     try:
         result = await analysis_client.trigger_scan()
@@ -118,6 +121,7 @@ async def trigger_scan(
 async def get_scan_status(
     _user: Annotated[dict, Depends(get_current_user)] = None,
 ):
+    """Return upstream scan status, or a timestamped unavailable status on service failure."""
     try:
         result = await analysis_client.get_scan_status()
         if "status" not in result:

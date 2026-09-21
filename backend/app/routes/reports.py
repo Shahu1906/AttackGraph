@@ -23,8 +23,9 @@ router = APIRouter(tags=["Reports"])
 
 async def _load_data_for_report(target: str) -> tuple[list, list]:
     """
-    Load paths and patches for report generation.
-    Falls back to Redis cache if the analysis service is unavailable.
+    Load paths and patches independently, using cached values on upstream failure.
+
+    Missing cache entries are represented by empty lists.
     """
     # Paths
     try:
@@ -48,6 +49,7 @@ async def download_pdf_report(
     target: Optional[str] = Query(default="all", description="Target host filter"),
     _user: Annotated[dict, Depends(get_current_user)] = None,
 ):
+    """Generate a timestamped PDF download, raising HTTP 500 if generation fails."""
     log.info("PDF report requested", user=_user.get("sub"), target=target)
     try:
         paths, patches = await _load_data_for_report(target or "all")
@@ -75,6 +77,7 @@ async def download_pdf_report(
 async def download_csv_report(
     _user: Annotated[dict, Depends(get_current_user)] = None,
 ):
+    """Generate a timestamped all-target CSV, raising HTTP 500 if generation fails."""
     log.info("CSV report requested", user=_user.get("sub"))
     try:
         paths, _ = await _load_data_for_report("all")

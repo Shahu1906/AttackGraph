@@ -24,6 +24,7 @@ settings = get_settings()
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Log application startup and shutdown around the FastAPI lifespan."""
     log.info("AttackGraphX API Gateway starting", port=settings.api_port)
     yield
     log.info("AttackGraphX API Gateway shutting down")
@@ -71,6 +72,7 @@ app.include_router(reports_router)
 # ---------------------------------------------------------------------------
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Convert an otherwise unhandled exception into the gateway's generic error envelope."""
     log.error("Unhandled gateway exception", path=request.url.path, error=str(exc))
     return JSONResponse(
         status_code=500,
@@ -89,4 +91,5 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 # ---------------------------------------------------------------------------
 @app.get("/", tags=["root"], include_in_schema=False)
 async def root():
+    """Return the gateway's basic liveness response."""
     return {"service": "AttackGraphX API Gateway", "status": "running"}

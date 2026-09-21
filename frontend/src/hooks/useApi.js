@@ -1,10 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 
 /**
- * Custom hook to execute API calls with automatic state management & retry logic
- * @param {Function} apiFunc - The async API function from client.js
- * @param {Array} params - Parameters to pass to apiFunc
- * @param {Object} options - Options { autoFetch: true, dependencies: [] }
+ * Execute an API function while tracking its data, service status, loading, and error state.
+ *
+ * The hook can run on mount and when caller-supplied dependencies change. It
+ * exposes `refetch` for explicit retries; it does not retry failed calls
+ * automatically.
+ *
+ * @param {Function} apiFunc - Async function to execute.
+ * @param {Array} params - Default arguments passed to `apiFunc`.
+ * @param {Object} options - Auto-fetch and effect dependency configuration.
+ * @returns {Object} Request state, state setters, and a `refetch` function.
  */
 export function useApi(apiFunc, params = [], options = {}) {
   const { autoFetch = true, dependencies = [] } = options;

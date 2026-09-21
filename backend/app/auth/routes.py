@@ -16,10 +16,12 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 # ---------------------------------------------------------------------------
 
 def _hash(password: str) -> bytes:
+    """Return a bcrypt hash of a UTF-8 password using a newly generated salt."""
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
 
 
 def _verify(plain: str, hashed: bytes) -> bool:
+    """Return whether a password matches a bcrypt hash, treating malformed hashes as mismatches."""
     try:
         return bcrypt.checkpw(plain.encode("utf-8"), hashed if isinstance(hashed, bytes) else hashed.encode("utf-8"))
     except Exception:
@@ -45,6 +47,7 @@ _USERS: dict[str, dict] = {
 
 
 def _authenticate(username: str, password: str) -> dict | None:
+    """Return the matching in-memory user record when both credentials are valid."""
     user = _USERS.get(username)
     if not user:
         return None
@@ -59,8 +62,9 @@ def _authenticate(username: str, password: str) -> dict | None:
 @router.post("/login", response_model=TokenResponse, summary="Authenticate and receive JWT")
 async def login(body: LoginRequest):
     """
-    Accepts username/password credentials.
-    Returns a signed JWT access token in the format expected by the frontend.
+    Authenticate an in-memory user and return a signed bearer token.
+
+    Raises HTTP 401 when either credential is invalid.
     """
     user = _authenticate(body.username, body.password)
     if not user:

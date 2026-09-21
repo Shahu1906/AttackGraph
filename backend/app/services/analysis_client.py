@@ -45,8 +45,10 @@ class AnalysisServiceClient:
 
     async def _request(self, method: str, path: str, **kwargs) -> Any:
         """
-        Make an HTTP request with retry + exponential backoff.
-        Returns parsed JSON on success, raises AnalysisServiceError on failure.
+        Return parsed JSON from an upstream request after bounded retries.
+
+        Timeouts, connection failures, and non-success HTTP responses are retried
+        with exponential backoff, then translated to ``AnalysisServiceError``.
         """
         url = f"{self._base_url}{path}"
         last_error: Exception | None = None
@@ -94,6 +96,7 @@ class AnalysisServiceClient:
     # ------------------------------------------------------------------
 
     async def get_paths(self, target: str = "all") -> list:
+        """Return attack paths, accepting either a bare list or a wrapped upstream payload."""
         params = {}
         if target and target != "all":
             params["target"] = target
@@ -104,12 +107,14 @@ class AnalysisServiceClient:
         return result if isinstance(result, list) else []
 
     async def get_patches(self) -> list:
+        """Return patches, accepting either a bare list or a wrapped upstream payload."""
         result = await self._request("GET", "/patches")
         if isinstance(result, dict):
             return result.get("data", result.get("patches", []))
         return result if isinstance(result, list) else []
 
     async def simulate_fix(self, vulnerability_id: str) -> dict:
+        """Request the modeled impact of fixing one vulnerability."""
         return await self._request(
             "POST",
             "/simulate",
@@ -117,12 +122,15 @@ class AnalysisServiceClient:
         )
 
     async def reset_simulation(self) -> dict:
+        """Request removal of all active upstream simulations."""
         return await self._request("POST", "/simulate/reset")
 
     async def get_scan_status(self) -> dict:
+        """Return the upstream infrastructure-scan status payload."""
         return await self._request("GET", "/scan/status")
 
     async def trigger_scan(self) -> dict:
+        """Request an upstream infrastructure scan."""
         return await self._request("GET", "/scan/trigger")
 
     async def health_check(self) -> bool:

@@ -7,7 +7,7 @@ export default function ReportExport({ pathsData = [], onToast }) {
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [loadingCsv, setLoadingCsv] = useState(false);
 
-  // Helper function to trigger browser blob download
+  /** Download a Blob through a temporary object URL and release that URL afterward. */
   const triggerBlobDownload = (blob, filename) => {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');

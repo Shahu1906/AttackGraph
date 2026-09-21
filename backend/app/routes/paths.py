@@ -25,8 +25,11 @@ async def _fetch_with_fallback(
     *fetch_args,
 ) -> dict:
     """
-    Shared resilient fetch pattern used by /paths and /patches.
-    Returns {"data": [...], "status": "live|stale_cache|unavailable"}
+    Fetch analysis data and fall back to the last cached value on service failure.
+
+    Returns an envelope whose status is ``live``, ``stale_cache``, or
+    ``unavailable``. A successful live response is offered to the cache, but a
+    cache write failure does not change the live result.
     """
     # 1. Try analysis service
     try:
@@ -53,6 +56,7 @@ async def get_paths(
     target: Optional[str] = Query(default="all", description="Filter by target host"),
     _user: Annotated[dict, Depends(get_current_user)] = None,
 ):
+    """Return target-filtered attack paths with last-known-good cache fallback."""
     cache_key = cache_service.paths_key(target or "all")
     return await _fetch_with_fallback(
         cache_key,
@@ -65,6 +69,7 @@ async def get_paths(
 async def get_patches(
     _user: Annotated[dict, Depends(get_current_user)] = None,
 ):
+    """Return remediation patches with last-known-good cache fallback."""
     cache_key = cache_service.patches_key()
     return await _fetch_with_fallback(
         cache_key,

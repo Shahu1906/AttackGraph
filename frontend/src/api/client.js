@@ -6,10 +6,12 @@ const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true' || import.meta.env.VIT
 // Global Dev Toggle State for status simulation demo
 let devSimulatedStatus = 'live';
 
+/** Override the status injected into subsequent API or mock responses for the developer demo. */
 export function setDevSimulatedStatus(status) {
   devSimulatedStatus = status;
 }
 
+/** Return the currently configured developer-demo status override. */
 export function getDevSimulatedStatus() {
   return devSimulatedStatus;
 }
@@ -18,7 +20,12 @@ export function getDevSimulatedStatus() {
 let activeSimulatedFixes = new Set();
 
 /**
- * Standardized fetch helper
+ * Send a gateway request through the live or mock transport.
+ *
+ * Live requests include the stored bearer token. A 401 response clears that
+ * token and redirects to login; other request failures resolve to an
+ * `unavailable` envelope instead of rejecting. Blob responses are returned
+ * directly when requested.
  */
 async function apiFetch(endpoint, options = {}) {
   const token = sessionStorage.getItem('attackgraphx_token');
@@ -85,7 +92,7 @@ async function apiFetch(endpoint, options = {}) {
 }
 
 /**
- * Mock Handler implementation
+ * Emulate gateway endpoints and their stateful simulation behavior in memory.
  */
 async function mockHandler(endpoint, options = {}) {
   // Artificial network latency (150ms)
@@ -206,6 +213,7 @@ async function mockHandler(endpoint, options = {}) {
 }
 
 // Exported high-level API functions
+/** Authenticate credentials through the configured gateway transport. */
 export async function loginApi(username, password) {
   return apiFetch('/auth/login', {
     method: 'POST',
@@ -213,15 +221,18 @@ export async function loginApi(username, password) {
   });
 }
 
+/** Fetch attack paths, optionally filtered to one target host. */
 export async function fetchPaths(target = 'all') {
   const query = target && target !== 'all' ? `?target=${encodeURIComponent(target)}` : '';
   return apiFetch(`/paths${query}`);
 }
 
+/** Fetch the recommended remediation patches. */
 export async function fetchPatches() {
   return apiFetch('/patches');
 }
 
+/** Request a what-if simulation for one vulnerability. */
 export async function simulateFix(vulnerability_id) {
   return apiFetch('/simulate', {
     method: 'POST',
@@ -229,24 +240,29 @@ export async function simulateFix(vulnerability_id) {
   });
 }
 
+/** Request a reset of all active what-if simulations. */
 export async function resetSimulation() {
   return apiFetch('/simulate/reset', { method: 'POST' });
 }
 
+/** Trigger an infrastructure scan. */
 export async function triggerScan() {
   return apiFetch('/scan/trigger');
 }
 
+/** Fetch gateway and dependency health information. */
 export async function fetchHealth() {
   return apiFetch('/health');
 }
 
+/** Fetch a PDF report Blob scoped to the requested target. */
 export async function downloadReportPdf(target = 'all') {
   return apiFetch(`/reports/pdf?target=${encodeURIComponent(target)}`, {
     responseType: 'blob',
   });
 }
 
+/** Fetch the all-target attack telemetry CSV as a Blob. */
 export async function downloadReportCsv() {
   return apiFetch('/reports/csv', {
     responseType: 'blob',

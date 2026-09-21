@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext(null);
 
-// Helper function to decode JWT payload without external library
+/** Decode a JWT payload for display without verifying its signature, returning `null` if malformed. */
 function parseJwt(token) {
   try {
     const base64Url = token.split('.')[1];
@@ -21,6 +21,7 @@ function parseJwt(token) {
   }
 }
 
+/** Provide session-backed authentication state and login/logout actions to descendants. */
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => {
     return sessionStorage.getItem('attackgraphx_token') || null;
@@ -78,6 +79,11 @@ export function AuthProvider({ children }) {
   );
 }
 
+/**
+ * Return the nearest authentication context.
+ *
+ * @throws {Error} When called outside an `AuthProvider`.
+ */
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {

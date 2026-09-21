@@ -22,12 +22,10 @@ router = APIRouter(tags=["Health"])
 @router.get("/health", summary="Platform health check")
 async def health_check():
     """
-    Returns service health status.
-    Response shape matches the frontend's mockHealth expectation:
-      {
-        "status": "healthy|degraded",
-        "dependencies": {"recon": "up|down", "analysis": "up|down", "gateway": "up|down"}
-      }
+    Report gateway and dependency reachability without requiring authentication.
+
+    The overall status reflects the gateway and analysis service. Redis
+    reachability is reported separately in the ``redis`` field.
     """
     analysis_ok = await analysis_client.health_check()
     redis_ok = await cache_service.ping()

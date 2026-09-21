@@ -31,6 +31,7 @@ class CacheService:
         self._client: aioredis.Redis | None = None
 
     def _get_client(self) -> aioredis.Redis:
+        """Create the Redis client on first use and return the shared instance."""
         if self._client is None:
             self._client = aioredis.from_url(
                 self._url,
@@ -78,14 +79,17 @@ class CacheService:
 
     @staticmethod
     def paths_key(target: str) -> str:
+        """Return the cache key for one target's attack paths."""
         return f"paths:{target}"
 
     @staticmethod
     def patches_key() -> str:
+        """Return the shared remediation-patches cache key."""
         return "patches"
 
     @staticmethod
     def simulate_key(vulnerability_id: str) -> str:
+        """Return the cache key for a vulnerability simulation result."""
         return f"simulate:{vulnerability_id}"
 
 
