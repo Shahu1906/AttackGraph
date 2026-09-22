@@ -1,0 +1,130 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# AttackGraphX — Full Stack Docker Compose
+#
+# Services:
+#   recon-service     — Person 1: FastAPI + Nmap scanner
+#   redis             — Message queue (Redis Streams)
+#   web-server        — Lab target: nginx HTTP :80
+#   ftp-server        — Lab target: vsftpd FTP :21
+#   custom-flask-app  — Lab target: Flask app HTTP :5000
+#
+# All lab targets and recon-service share attackgraphx-net.
+# Redis is accessible to recon-service only (not exposed to range containers).
+#
+# FOR AUTHORIZED LABORATORY USE ONLY.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Recon Service ────────────────────────────────────────────────────────────
+  recon-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: attackgraphx-recon
+    hostname: recon-service
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      RANGE_CIDR: 172.20.0.0/24
+      RANGE_NETWORK: attackgraphx-net
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - attackgraphx-net
+      - recon-internal
+    restart: unless-stopped
+    # Nmap needs elevated network capabilities for certain scan types
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: attackgraphx-redis
+    hostname: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - recon-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: redis-server --save 60 1 --loglevel warning
+
+  # ── Web Server (Lab Target) ───────────────────────────────────────────────────
+  web-server:
+    image: nginx:1.25-alpine
+    container_name: attackgraphx-web
+    hostname: web-server
+    volumes:
+      - ./range/web/index.html:/usr/share/nginx/html/index.html:ro
+    networks:
+      attackgraphx-net:
+        ipv4_address: 172.20.0.10
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── FTP Server (Lab Target) ───────────────────────────────────────────────────
+  ftp-server:
+    image: fauria/vsftpd
+    container_name: attackgraphx-ftp
+    hostname: ftp-server
+    environment:
+      FTP_USER: labftpuser
+      FTP_PASS: labftppass123
+      PASV_ADDRESS: 172.20.0.11
+      PASV_MIN_PORT: 30000
+      PASV_MAX_PORT: 30009
+      ANONYMOUS_ENABLE: "YES"
+    networks:
+      attackgraphx-net:
+        ipv4_address: 172.20.0.11
+    restart: unless-stopped
+
+  # ── Custom Flask App (Lab Target) ────────────────────────────────────────────
+  custom-flask-app:
+    build:
+      context: ./range/custom-app
+      dockerfile: Dockerfile
+    container_name: attackgraphx-flask
+    hostname: custom-flask-app
+    networks:
+      attackgraphx-net:
+        ipv4_address: 172.20.0.12
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:5000/status')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+# ─── Networks ──────────────────────────────────────────────────────────────────
+
+networks:
+  # Shared network: recon-service can reach lab targets, and vice versa
+  attackgraphx-net:
+    name: attackgraphx-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+          gateway: 172.20.0.1
+
+  # Internal-only network: recon-service ↔ Redis (not exposed to lab targets)
+  recon-internal:
+    name: attackgraphx-recon-internal
+    driver: bridge
