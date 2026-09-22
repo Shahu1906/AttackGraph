@@ -47,14 +47,24 @@ app = FastAPI(
 )
 
 # ---------------------------------------------------------------------------
-# CORS — restrict to the configured frontend origin only
+# CORS — allow all localhost / 127.0.0.1 origins (any port) for dev.
+# In production, replace the regex with an explicit allow_origins list.
 # ---------------------------------------------------------------------------
+_extra_origins = [
+    o.strip()
+    for o in settings.frontend_origin.split(",")
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_origin],
+    allow_origins=_extra_origins,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=600,
 )
 
 # ---------------------------------------------------------------------------
