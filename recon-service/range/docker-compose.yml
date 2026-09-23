@@ -1,0 +1,83 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# AttackGraphX — Simulated Enterprise Attack Range
+#
+# FOR AUTHORIZED LABORATORY USE ONLY.
+#
+# This Compose file creates a controlled, isolated Docker network containing
+# intentionally weak/test services that Nmap will scan.
+#
+# DO NOT expose these containers to the public internet.
+# DO NOT use any credentials defined here in real systems.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Web Server ──────────────────────────────────────────────────────────────
+  # A plain nginx container serving a static page.
+  # Target: HTTP port 80 on the attackgraphx-net network.
+  web-server:
+    image: nginx:1.25-alpine
+    container_name: attackgraphx-web
+    hostname: web-server
+    volumes:
+      - ./web/index.html:/usr/share/nginx/html/index.html:ro
+    networks:
+      attackgraphx-net:
+        ipv4_address: 172.20.0.10
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── FTP Server ──────────────────────────────────────────────────────────────
+  # vsftpd-based FTP server with anonymous read-only access.
+  # Target: FTP port 21 on the attackgraphx-net network.
+  ftp-server:
+    image: fauria/vsftpd
+    container_name: attackgraphx-ftp
+    hostname: ftp-server
+    environment:
+      # Lab-only fake credentials — not used for real auth
+      FTP_USER: labftpuser
+      FTP_PASS: labftppass123
+      PASV_ADDRESS: 172.20.0.11
+      PASV_MIN_PORT: 30000
+      PASV_MAX_PORT: 30009
+      ANONYMOUS_ENABLE: "YES"
+    networks:
+      attackgraphx-net:
+        ipv4_address: 172.20.0.11
+    restart: unless-stopped
+
+  # ── Custom Flask Application ─────────────────────────────────────────────────
+  # A minimal Flask app with a weak /login endpoint.
+  # Target: HTTP port 5000 on the attackgraphx-net network.
+  custom-flask-app:
+    build:
+      context: ./custom-app
+      dockerfile: Dockerfile
+    container_name: attackgraphx-flask
+    hostname: custom-flask-app
+    networks:
+      attackgraphx-net:
+        ipv4_address: 172.20.0.12
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/status')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+# ─── Network ──────────────────────────────────────────────────────────────────
+# Dedicated isolated bridge network for the attack range.
+# All scanning MUST be restricted to this subnet: 172.20.0.0/24
+networks:
+  attackgraphx-net:
+    name: attackgraphx-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+          gateway: 172.20.0.1
